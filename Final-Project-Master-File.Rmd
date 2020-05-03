@@ -1,0 +1,868 @@
+---
+title: 'An Analysis of Two Major Advanced Baseball Statistics Websites: FanGraphs
+  versus Baseball Savant'
+author: "Alex Rados"
+date: "4/30/2020"
+output: 
+  github_document:
+    toc: True
+---
+# Abstract
+In this presentation, I will aim to answer the question of who's advanced statistics are more reliable in predicting a players' future performance, FanGraph's or Baseball Savant's. To measure an individual player's performance, I will use the oft-criticized and misunderstood wins above replacement, or WAR, of the player in the following season. The process of such a challenge is pulling a variety of variables from each website (anywhere between 45 to 80 variables, depending on the website, year, and position) and building a principal components analysis (PCA) from the data at hand. I will then use these principal components in a random forest model and attempt to build the most accurate predictive model for future player performance using root-mean-square error (RMSE) as the measuring stick. After doing so, I found that FanGraph's advanced statistics consistently predicted future player WAR for both hitters and pitchers each year, with Baseball Savant closely behind. However, neither was perfect and only addresses the idea that even with the influx of data, predicting future performance is still extremely difficult. 
+
+# Introduction  
+The release of "Moneyball" in 2003 and the unexpected dominance of the Oakland Athletics, a cash-strapped team who exchanged World Series trophies for the bragging rights to being the best team with no budget, inspired what would become the analytics age in baseball. Over that time, organizations and fans alike have been collecting data and creating new statistics like theres no tomorrow. Any fan can find these statistics on the two leading public baseball statistics websites, FanGraphs and Baseball Savant. These range from reaction time on a fly ball to time taken in between pitches and include just about every letter in the alphabet as well as mathematical operations. Baseball has long been known for its statistics and box scores, but in today's analytics age, there is data on everything and organization's are behind if they aren't making use of it.
+
+FanGraphs is the elder of the two databases, having tracked players peripherals and offering more accurate views into a players performance than basic statistics since 2009. It is the dream website of any human being that grew up eyes glazed on the back of a baseball card.
+
+Baseball Savant is a newer entrant into the world of advanced statistics and began to make waves in 2015 with its introduction of Statcast. Statcast metrics track a variety of different actions, most notably exit velocity and launch angle, and are seemingly revolutionizing the sport of evaluating baseball analytics.  
+
+Both of these websites provide their fair share of different statistics that hope to help predict the future. And with the amount of data available on them for any individual player, there are surely answers to the age old questions of how the 29 year old left-handed starter who struck out 200 batters will fare next season or if the super-utility role player that broke out for 30 home runs will experience similar success next year. Most importantly, for those who dare traverse into baseball analytics, it just provides more and more information. 
+
+Being able to know which statistics to use and how to use them is the most pressing issue at hand. There are many analysts out there that can bang the table for a player being good or bad using their fair share of statistics, and in the end, only one will be right. Knowing which set to use is thus the starting point for being on the correct side of the argument, whether you're the general manager of a team prepared to offer a $400 million contract to a star player or a recent college graduate trying to build a case for why they should be hired by the team. No matter what, knowing whether FanGraphs or Baseball Savant, or in the future when Baseball Smarticus or any other website is created and promoting their own fancy analytics database, is the best predictor of future performance is the first step to building a legitimate career in the sport of baseball.
+
+# Methods
+```{r include=FALSE}
+library(tidyverse)
+library(randomForest)
+library(doMC)
+library(foreach)
+library(mosaic)
+library(kableExtra)
+library(gridExtra)
+options('mosaic:parallelMessage' = FALSE)
+
+# Creating a function to change the percentages in FanGraphs datset into numbers
+pct_to_number<- function(x){
+  x_replace_pct<-sub("%", "", x)
+  x_as_numeric<-as.numeric(x_replace_pct)
+}
+
+# Importing the datasets of player WAR, of which there are 8
+WARhitters_2015 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2015/Hitters WAR 2015 - FGfifteenhitters.csv", row.names=1)
+
+WARpitchers_2015 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2015/Pitchers WAR 2015 - FGfifteenpitchers.csv", row.names=1)
+
+WARhitters_2016 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2016/Hitters WAR 2016 - FGsixteenhitters.csv", row.names=1)
+
+WARpitchers_2016 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2016/Pitchers WAR 2016 - FGsixteenpitchers.csv", row.names=1)
+
+WARhitters_2017 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2017/Hitters WAR 2017 - FGseventeenhitters.csv", row.names=1)
+
+WARpitchers_2017 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2017/Pitchers WAR 2017 - FGseventeenpitchers.csv", row.names=1)
+
+WARhitters_2018 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2018/Hitters WAR 2018 - FGeighteenhitters.csv", row.names=1)
+
+WARpitchers_2018 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2018/Pitchers WAR 2018 - FGeighteenpitchers.csv",
+                       row.names=1)
+
+# Importing each dataset for hitters and pitchers from their respective websites
+
+FGhitters_15 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2015/FGhitters - FGfifteenhitters.csv")
+BShitters_15 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2015/BShitters - BSfifteenhitters.csv")
+
+FGhitters_16 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2016/FGhitters - FGsixteenhitters.csv")
+BShitters_16 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2016/BShitters - BSsixteenhitters.csv")
+
+FGhitters_17 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2017/FGhitters - FGseventeenhitters.csv")
+BShitters_17 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2017/BShitters - BSseventeenhitters.csv")
+
+FGhitters_18 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2018/FGhitters - FGeighteenhitters.csv")
+BShitters_18 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2018/BShitters - BSeighteenhitters.csv")
+
+FGpitchers_15 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2015/FGpitchers - FGfifteenpitchers.csv")
+BSpitchers_15 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2015/BSpitchers - BSfifteenpitchers.csv")
+
+FGpitchers_16 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2016/FGpitchers - FGsixteenpitchers.csv")
+BSpitchers_16 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2016/BSpitchers - BSsixteenpitchers.csv")
+
+FGpitchers_17 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2017/FGpitchers - FGseventeenpitchers.csv")
+BSpitchers_17 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2017/BSpitchers - BSseventeenpitchers.csv")
+
+FGpitchers_18 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2018/FGpitchers - FGeighteenpitchers.csv")
+BSpitchers_18 = read.csv("~/Documents/GitHub/Data-Mining-Final-Project/Data 2018/BSpitchers - BSeighteenpitchers.csv")
+``` 
+
+There are sixteen unique data sets that I'll be focusing on for this report. For each year covered, there'll be four different sets, two for each website (FanGraphs and Baseball Savant) addressing hitters and pitchers, seperately. I will be looking at each year from 2015 until 2018, using player statistics from their respective years and trying to predict their performance in the following season (thus, the outfielder Mike Trout's 2015 statistical season will be used to predict his WAR in 2016). I only go back as far as 2015 as that is when the statcast data becomes available from Baseball Savant. 
+
+For each website and year, I limit the player pool to those who have recorded 200 plate appearances, by definition of the website. For hitters, this means stepping up to bat at least 200 times in a season. For pitchers, this amounts to around 40 innings pitched, thus allowing both relievers and starters to be included. This also limits the notoriously small sample that at times plagues evaluation of players in baseball.  
+
+There are different amounts of variables for each database, even varying by year. For hitters within FanGraphs' database, there are 68 available features from which to pull from each year, ranging from strikeout-to-walk rates (K/BB) to weighted runs created plus (wRC+, how good of a hitter a player is factoring in ballparks, team, and other variables that may differ among batters). For the pitchers, after removing the extraneous statistics pulled in, there are 73 variables used for each year.  
+
+For Baseball Savant, the variables stay relatively similar for the hitters, only adding in homeplate-to-first-base speed for 2017 and 2018. Thus, for 2015 and 2016 there are a total of 44 features while for 2017 and 2018 it jumps to 45. For pitchers, on the otherhand, there is a massive difference between the 2015-2016 datasets and the 2017-2018 datasets. 2015 and 2016 only include 51 variables while 2017 and 2018 total 73 variables each. 
+
+The reasoning behind this is in 2017, Baseball Savant began evaluating each singluar pitch and recording its velocity, break, and spin rate. This was seen as a major breakthrough in advanced analytics, allowing those interested enough to see what really affects a hitters ability to make contact with a pitch. This can lead to more informative coaching and scouting throughout the league, allowing those in charge and those desiring for such positions to take advantage of even more data. And, within the paper, this could theoretically lead to Baseball Savant being a more accurate predictor of future performance of pitchers, but more on that later.
+
+```{r include=FALSE}
+# Cleaning up each of the data sets
+FGP_15 = subset(FGpitchers_15, select = -c(Team, playerid, LOB., LD., GB., FB., IFFB., HR.FB, K., BB., Soft., Med., Hard.))
+
+FGP_15[['Swing.']] = pct_to_number(FGP_15[['Swing.']])
+FGP_15[['O.Contact.']] = pct_to_number(FGP_15[['O.Contact.']])
+FGP_15[['O.Swing.']] = pct_to_number(FGP_15[['O.Swing.']])
+FGP_15[['Z.Swing.']] = pct_to_number(FGP_15[['Z.Swing.']])
+FGP_15[['Z.Contact.']] = pct_to_number(FGP_15[['Z.Contact.']])
+FGP_15[['Contact.']] = pct_to_number(FGP_15[['Contact.']])
+FGP_15[['Zone.']] = pct_to_number(FGP_15[['Zone.']])
+FGP_15[['F.Strike.']] = pct_to_number(FGP_15[['F.Strike.']])
+FGP_15[['SwStr.']] = pct_to_number(FGP_15[['SwStr.']])
+FGP_15[['O.Swing...pfx.']] = pct_to_number(FGP_15[['O.Swing...pfx.']])
+FGP_15[['Z.Swing...pfx.']] = pct_to_number(FGP_15[['Z.Swing...pfx.']])
+FGP_15[['Swing...pfx.']] = pct_to_number(FGP_15[['Swing...pfx.']])
+FGP_15[['O.Contact...pfx.']] = pct_to_number(FGP_15[['O.Contact...pfx.']])
+FGP_15[['Z.Contact...pfx.']] = pct_to_number(FGP_15[['Z.Contact...pfx.']])
+FGP_15[['Contact...pfx.']] = pct_to_number(FGP_15[['Contact...pfx.']])
+FGP_15[['Zone...pfx.']] = pct_to_number(FGP_15[['Zone...pfx.']])
+FGP_15[['O.Swing...pi.']] = pct_to_number(FGP_15[['O.Swing...pi.']])
+FGP_15[['Z.Swing...pi.']] = pct_to_number(FGP_15[['Z.Swing...pi.']])
+FGP_15[['Swing...pi.']] = pct_to_number(FGP_15[['Swing...pi.']])
+FGP_15[['Z.Contact...pi.']] = pct_to_number(FGP_15[['Z.Contact...pi.']])
+FGP_15[['Contact...pi.']] = pct_to_number(FGP_15[['Contact...pi.']])
+FGP_15[['Zone...pi.']] = pct_to_number(FGP_15[['Zone...pi.']])
+FGP_15[['O.Contact...pi.']] = pct_to_number(FGP_15[['O.Contact...pi.']])
+FGP_15[['K.BB.']] = pct_to_number(FGP_15[['K.BB.']])
+
+BSP_15 = subset(BSpitchers_15, select = -c(last_name, first_name, year, n, n_fastball_formatted, fastball_avg_speed, fastball_avg_spin, fastball_avg_break_x, fastball_avg_break_z, fastball_avg_break, fastball_range_speed, n_breaking_formatted, breaking_avg_speed, breaking_avg_spin, breaking_avg_break_x, breaking_avg_break_z, breaking_avg_break, breaking_range_speed, n_offspeed_formatted, offspeed_avg_speed, offspeed_avg_spin, offspeed_avg_break_x, offspeed_avg_break_z, offspeed_avg_break, offspeed_range_speed) )
+
+FGP_16 = subset(FGpitchers_16, select = -c(Team, playerid, LOB., LD., GB., FB., IFFB., HR.FB, K., BB., Soft., Med., Hard.))
+
+FGP_16[['Swing.']] = pct_to_number(FGP_16[['Swing.']])
+FGP_16[['O.Contact.']] = pct_to_number(FGP_16[['O.Contact.']])
+FGP_16[['O.Swing.']] = pct_to_number(FGP_16[['O.Swing.']])
+FGP_16[['Z.Swing.']] = pct_to_number(FGP_16[['Z.Swing.']])
+FGP_16[['Z.Contact.']] = pct_to_number(FGP_16[['Z.Contact.']])
+FGP_16[['Contact.']] = pct_to_number(FGP_16[['Contact.']])
+FGP_16[['Zone.']] = pct_to_number(FGP_16[['Zone.']])
+FGP_16[['F.Strike.']] = pct_to_number(FGP_16[['F.Strike.']])
+FGP_16[['SwStr.']] = pct_to_number(FGP_16[['SwStr.']])
+FGP_16[['O.Swing...pfx.']] = pct_to_number(FGP_16[['O.Swing...pfx.']])
+FGP_16[['Z.Swing...pfx.']] = pct_to_number(FGP_16[['Z.Swing...pfx.']])
+FGP_16[['Swing...pfx.']] = pct_to_number(FGP_16[['Swing...pfx.']])
+FGP_16[['O.Contact...pfx.']] = pct_to_number(FGP_16[['O.Contact...pfx.']])
+FGP_16[['Z.Contact...pfx.']] = pct_to_number(FGP_16[['Z.Contact...pfx.']])
+FGP_16[['Contact...pfx.']] = pct_to_number(FGP_16[['Contact...pfx.']])
+FGP_16[['Zone...pfx.']] = pct_to_number(FGP_16[['Zone...pfx.']])
+FGP_16[['O.Swing...pi.']] = pct_to_number(FGP_16[['O.Swing...pi.']])
+FGP_16[['Z.Swing...pi.']] = pct_to_number(FGP_16[['Z.Swing...pi.']])
+FGP_16[['Swing...pi.']] = pct_to_number(FGP_16[['Swing...pi.']])
+FGP_16[['Z.Contact...pi.']] = pct_to_number(FGP_16[['Z.Contact...pi.']])
+FGP_16[['Contact...pi.']] = pct_to_number(FGP_16[['Contact...pi.']])
+FGP_16[['Zone...pi.']] = pct_to_number(FGP_16[['Zone...pi.']])
+FGP_16[['O.Contact...pi.']] = pct_to_number(FGP_16[['O.Contact...pi.']])
+FGP_16[['K.BB.']] = pct_to_number(FGP_16[['K.BB.']])
+
+BSP_16 = subset(BSpitchers_16, select = -c(last_name, first_name, year, n, n_fastball_formatted, fastball_avg_speed, fastball_avg_spin, fastball_avg_break_x, fastball_avg_break_z, fastball_avg_break, fastball_range_speed, n_breaking_formatted, breaking_avg_speed, breaking_avg_spin, breaking_avg_break_x, breaking_avg_break_z, breaking_avg_break, breaking_range_speed, n_offspeed_formatted, offspeed_avg_speed, offspeed_avg_spin, offspeed_avg_break_x, offspeed_avg_break_z, offspeed_avg_break, offspeed_range_speed) )
+
+FGP_17 = subset(FGpitchers_17, select = -c(Team, playerid, LOB., LD., GB., FB., IFFB., HR.FB, K., BB., Soft., Med., Hard.))
+
+FGP_17[['Swing.']] = pct_to_number(FGP_17[['Swing.']])
+FGP_17[['O.Contact.']] = pct_to_number(FGP_17[['O.Contact.']])
+FGP_17[['O.Swing.']] = pct_to_number(FGP_17[['O.Swing.']])
+FGP_17[['Z.Swing.']] = pct_to_number(FGP_17[['Z.Swing.']])
+FGP_17[['Z.Contact.']] = pct_to_number(FGP_17[['Z.Contact.']])
+FGP_17[['Contact.']] = pct_to_number(FGP_17[['Contact.']])
+FGP_17[['Zone.']] = pct_to_number(FGP_17[['Zone.']])
+FGP_17[['F.Strike.']] = pct_to_number(FGP_17[['F.Strike.']])
+FGP_17[['SwStr.']] = pct_to_number(FGP_17[['SwStr.']])
+FGP_17[['O.Swing...pfx.']] = pct_to_number(FGP_17[['O.Swing...pfx.']])
+FGP_17[['Z.Swing...pfx.']] = pct_to_number(FGP_17[['Z.Swing...pfx.']])
+FGP_17[['Swing...pfx.']] = pct_to_number(FGP_17[['Swing...pfx.']])
+FGP_17[['O.Contact...pfx.']] = pct_to_number(FGP_17[['O.Contact...pfx.']])
+FGP_17[['Z.Contact...pfx.']] = pct_to_number(FGP_17[['Z.Contact...pfx.']])
+FGP_17[['Contact...pfx.']] = pct_to_number(FGP_17[['Contact...pfx.']])
+FGP_17[['Zone...pfx.']] = pct_to_number(FGP_17[['Zone...pfx.']])
+FGP_17[['O.Swing...pi.']] = pct_to_number(FGP_17[['O.Swing...pi.']])
+FGP_17[['Z.Swing...pi.']] = pct_to_number(FGP_17[['Z.Swing...pi.']])
+FGP_17[['Swing...pi.']] = pct_to_number(FGP_17[['Swing...pi.']])
+FGP_17[['Z.Contact...pi.']] = pct_to_number(FGP_17[['Z.Contact...pi.']])
+FGP_17[['Contact...pi.']] = pct_to_number(FGP_17[['Contact...pi.']])
+FGP_17[['Zone...pi.']] = pct_to_number(FGP_17[['Zone...pi.']])
+FGP_17[['O.Contact...pi.']] = pct_to_number(FGP_17[['O.Contact...pi.']])
+FGP_17[['K.BB.']] = pct_to_number(FGP_17[['K.BB.']])
+
+BSP_17 = subset(BSpitchers_17, select = -c(last_name, first_name, year))
+
+FGP_18 = subset(FGpitchers_18, select = -c(Team, playerid, LOB., LD., GB., FB., IFFB., HR.FB, K., BB., Soft., Med., Hard.))
+
+FGP_18[['Swing.']] = pct_to_number(FGP_18[['Swing.']])
+FGP_18[['O.Contact.']] = pct_to_number(FGP_18[['O.Contact.']])
+FGP_18[['O.Swing.']] = pct_to_number(FGP_18[['O.Swing.']])
+FGP_18[['Z.Swing.']] = pct_to_number(FGP_18[['Z.Swing.']])
+FGP_18[['Z.Contact.']] = pct_to_number(FGP_18[['Z.Contact.']])
+FGP_18[['Contact.']] = pct_to_number(FGP_18[['Contact.']])
+FGP_18[['Zone.']] = pct_to_number(FGP_18[['Zone.']])
+FGP_18[['F.Strike.']] = pct_to_number(FGP_18[['F.Strike.']])
+FGP_18[['SwStr.']] = pct_to_number(FGP_18[['SwStr.']])
+FGP_18[['O.Swing...pfx.']] = pct_to_number(FGP_18[['O.Swing...pfx.']])
+FGP_18[['Z.Swing...pfx.']] = pct_to_number(FGP_18[['Z.Swing...pfx.']])
+FGP_18[['Swing...pfx.']] = pct_to_number(FGP_18[['Swing...pfx.']])
+FGP_18[['O.Contact...pfx.']] = pct_to_number(FGP_18[['O.Contact...pfx.']])
+FGP_18[['Z.Contact...pfx.']] = pct_to_number(FGP_18[['Z.Contact...pfx.']])
+FGP_18[['Contact...pfx.']] = pct_to_number(FGP_18[['Contact...pfx.']])
+FGP_18[['Zone...pfx.']] = pct_to_number(FGP_18[['Zone...pfx.']])
+FGP_18[['O.Swing...pi.']] = pct_to_number(FGP_18[['O.Swing...pi.']])
+FGP_18[['Z.Swing...pi.']] = pct_to_number(FGP_18[['Z.Swing...pi.']])
+FGP_18[['Swing...pi.']] = pct_to_number(FGP_18[['Swing...pi.']])
+FGP_18[['Z.Contact...pi.']] = pct_to_number(FGP_18[['Z.Contact...pi.']])
+FGP_18[['Contact...pi.']] = pct_to_number(FGP_18[['Contact...pi.']])
+FGP_18[['Zone...pi.']] = pct_to_number(FGP_18[['Zone...pi.']])
+FGP_18[['O.Contact...pi.']] = pct_to_number(FGP_18[['O.Contact...pi.']])
+FGP_18[['K.BB.']] = pct_to_number(FGP_18[['K.BB.']])
+
+BSP_18 = subset(BSpitchers_18, select = -c(last_name, first_name, year))
+
+FG_15 = subset(FGhitters_15, select = -c(FRM, playerid, Team, BB., K., LD., GB., FB., IFFB., HR.FB, Soft., Med., Hard., pLI, phLI, PH, WPA.LI))
+
+FG_15[['Swing.']] = pct_to_number(FG_15[['Swing.']])
+FG_15[['O.Contact.']] = pct_to_number(FG_15[['O.Contact.']])
+FG_15[['O.Swing.']] = pct_to_number(FG_15[['O.Swing.']])
+FG_15[['Z.Swing.']] = pct_to_number(FG_15[['Z.Swing.']])
+FG_15[['Z.Contact.']] = pct_to_number(FG_15[['Z.Contact.']])
+FG_15[['Contact.']] = pct_to_number(FG_15[['Contact.']])
+FG_15[['Zone.']] = pct_to_number(FG_15[['Zone.']])
+FG_15[['F.Strike.']] = pct_to_number(FG_15[['F.Strike.']])
+FG_15[['SwStr.']] = pct_to_number(FG_15[['SwStr.']])
+FG_15[['O.Swing...pfx.']] = pct_to_number(FG_15[['O.Swing...pfx.']])
+FG_15[['Z.Swing...pfx.']] = pct_to_number(FG_15[['Z.Swing...pfx.']])
+FG_15[['Swing...pfx.']] = pct_to_number(FG_15[['Swing...pfx.']])
+FG_15[['O.Contact...pfx.']] = pct_to_number(FG_15[['O.Contact...pfx.']])
+FG_15[['Z.Contact...pfx.']] = pct_to_number(FG_15[['Z.Contact...pfx.']])
+FG_15[['Contact...pfx.']] = pct_to_number(FG_15[['Contact...pfx.']])
+FG_15[['Zone...pfx.']] = pct_to_number(FG_15[['Zone...pfx.']])
+FG_15[['O.Swing...pi.']] = pct_to_number(FG_15[['O.Swing...pi.']])
+FG_15[['Z.Swing...pi.']] = pct_to_number(FG_15[['Z.Swing...pi.']])
+FG_15[['Swing...pi.']] = pct_to_number(FG_15[['Swing...pi.']])
+FG_15[['Z.Contact...pi.']] = pct_to_number(FG_15[['Z.Contact...pi.']])
+FG_15[['Contact...pi.']] = pct_to_number(FG_15[['Contact...pi.']])
+FG_15[['Zone...pi.']] = pct_to_number(FG_15[['Zone...pi.']])
+FG_15[['O.Contact...pi.']] = pct_to_number(FG_15[['O.Contact...pi.']])
+
+BS_15 = subset(BShitters_15, select = -c(last_name, first_name, year, pop_2b_sba_count, pop_2b_sba, pop_2b_sb, pop_2b_cs, pop_3b_sba_count, pop_3b_sba, pop_3b_sb, pop_3b_cs, exchange_2b_3b_sba, maxeff_arm_2b_3b_sba, n_outs_above_average, rel_league_reaction_distance, rel_league_burst_distance, rel_league_routing_distance, rel_league_bootup_distance, f_bootup_distance, hp_to_1b))
+
+FG_16 = subset(FGhitters_16, select = -c(FRM, playerid, Team, BB., K., LD., GB., FB., IFFB., HR.FB, Soft., Med., Hard., pLI, phLI, PH, WPA.LI))
+
+FG_16[['Swing.']] = pct_to_number(FG_16[['Swing.']])
+FG_16[['O.Contact.']] = pct_to_number(FG_16[['O.Contact.']])
+FG_16[['O.Swing.']] = pct_to_number(FG_16[['O.Swing.']])
+FG_16[['Z.Swing.']] = pct_to_number(FG_16[['Z.Swing.']])
+FG_16[['Z.Contact.']] = pct_to_number(FG_16[['Z.Contact.']])
+FG_16[['Contact.']] = pct_to_number(FG_16[['Contact.']])
+FG_16[['Zone.']] = pct_to_number(FG_16[['Zone.']])
+FG_16[['F.Strike.']] = pct_to_number(FG_16[['F.Strike.']])
+FG_16[['SwStr.']] = pct_to_number(FG_16[['SwStr.']])
+FG_16[['O.Swing...pfx.']] = pct_to_number(FG_16[['O.Swing...pfx.']])
+FG_16[['Z.Swing...pfx.']] = pct_to_number(FG_16[['Z.Swing...pfx.']])
+FG_16[['Swing...pfx.']] = pct_to_number(FG_16[['Swing...pfx.']])
+FG_16[['O.Contact...pfx.']] = pct_to_number(FG_16[['O.Contact...pfx.']])
+FG_16[['Z.Contact...pfx.']] = pct_to_number(FG_16[['Z.Contact...pfx.']])
+FG_16[['Contact...pfx.']] = pct_to_number(FG_16[['Contact...pfx.']])
+FG_16[['Zone...pfx.']] = pct_to_number(FG_16[['Zone...pfx.']])
+FG_16[['O.Swing...pi.']] = pct_to_number(FG_16[['O.Swing...pi.']])
+FG_16[['Z.Swing...pi.']] = pct_to_number(FG_16[['Z.Swing...pi.']])
+FG_16[['Swing...pi.']] = pct_to_number(FG_16[['Swing...pi.']])
+FG_16[['Z.Contact...pi.']] = pct_to_number(FG_16[['Z.Contact...pi.']])
+FG_16[['Contact...pi.']] = pct_to_number(FG_16[['Contact...pi.']])
+FG_16[['Zone...pi.']] = pct_to_number(FG_16[['Zone...pi.']])
+FG_16[['O.Contact...pi.']] = pct_to_number(FG_16[['O.Contact...pi.']])
+
+BS_16 = subset(BShitters_16, select = -c(last_name, first_name, year, pop_2b_sba_count, pop_2b_sba, pop_2b_sb, pop_2b_cs, pop_3b_sba_count, pop_3b_sba, pop_3b_sb, pop_3b_cs, exchange_2b_3b_sba, maxeff_arm_2b_3b_sba, n_outs_above_average, rel_league_reaction_distance, rel_league_burst_distance, rel_league_routing_distance, rel_league_bootup_distance, f_bootup_distance, hp_to_1b))
+
+FG_17 = subset(FGhitters_17, select = -c(FRM, playerid, Team, BB., K., LD., GB., FB., IFFB., HR.FB, Soft., Med., Hard., pLI, phLI, PH, WPA.LI))
+
+FG_17[['Swing.']] = pct_to_number(FG_17[['Swing.']])
+FG_17[['O.Contact.']] = pct_to_number(FG_17[['O.Contact.']])
+FG_17[['O.Swing.']] = pct_to_number(FG_17[['O.Swing.']])
+FG_17[['Z.Swing.']] = pct_to_number(FG_17[['Z.Swing.']])
+FG_17[['Z.Contact.']] = pct_to_number(FG_17[['Z.Contact.']])
+FG_17[['Contact.']] = pct_to_number(FG_17[['Contact.']])
+FG_17[['Zone.']] = pct_to_number(FG_17[['Zone.']])
+FG_17[['F.Strike.']] = pct_to_number(FG_17[['F.Strike.']])
+FG_17[['SwStr.']] = pct_to_number(FG_17[['SwStr.']])
+FG_17[['O.Swing...pfx.']] = pct_to_number(FG_17[['O.Swing...pfx.']])
+FG_17[['Z.Swing...pfx.']] = pct_to_number(FG_17[['Z.Swing...pfx.']])
+FG_17[['Swing...pfx.']] = pct_to_number(FG_17[['Swing...pfx.']])
+FG_17[['O.Contact...pfx.']] = pct_to_number(FG_17[['O.Contact...pfx.']])
+FG_17[['Z.Contact...pfx.']] = pct_to_number(FG_17[['Z.Contact...pfx.']])
+FG_17[['Contact...pfx.']] = pct_to_number(FG_17[['Contact...pfx.']])
+FG_17[['Zone...pfx.']] = pct_to_number(FG_17[['Zone...pfx.']])
+FG_17[['O.Swing...pi.']] = pct_to_number(FG_17[['O.Swing...pi.']])
+FG_17[['Z.Swing...pi.']] = pct_to_number(FG_17[['Z.Swing...pi.']])
+FG_17[['Swing...pi.']] = pct_to_number(FG_17[['Swing...pi.']])
+FG_17[['Z.Contact...pi.']] = pct_to_number(FG_17[['Z.Contact...pi.']])
+FG_17[['Contact...pi.']] = pct_to_number(FG_17[['Contact...pi.']])
+FG_17[['Zone...pi.']] = pct_to_number(FG_17[['Zone...pi.']])
+FG_17[['O.Contact...pi.']] = pct_to_number(FG_17[['O.Contact...pi.']])
+
+BS_17 = subset(BShitters_17, select = -c(last_name, first_name, year, pop_2b_sba_count, pop_2b_sba, pop_2b_sb, pop_2b_cs, pop_3b_sba_count, pop_3b_sba, pop_3b_sb, pop_3b_cs, exchange_2b_3b_sba, maxeff_arm_2b_3b_sba, n_outs_above_average, rel_league_reaction_distance, rel_league_burst_distance, rel_league_routing_distance, rel_league_bootup_distance, f_bootup_distance))
+
+FG_18 = subset(FGhitters_18, select = -c(FRM, playerid, Team, BB., K., LD., GB., FB., IFFB., HR.FB, Soft., Med., Hard., pLI, phLI, PH, WPA.LI))
+
+FG_18[['Swing.']] = pct_to_number(FG_18[['Swing.']])
+FG_18[['O.Contact.']] = pct_to_number(FG_18[['O.Contact.']])
+FG_18[['O.Swing.']] = pct_to_number(FG_18[['O.Swing.']])
+FG_18[['Z.Swing.']] = pct_to_number(FG_18[['Z.Swing.']])
+FG_18[['Z.Contact.']] = pct_to_number(FG_18[['Z.Contact.']])
+FG_18[['Contact.']] = pct_to_number(FG_18[['Contact.']])
+FG_18[['Zone.']] = pct_to_number(FG_18[['Zone.']])
+FG_18[['F.Strike.']] = pct_to_number(FG_18[['F.Strike.']])
+FG_18[['SwStr.']] = pct_to_number(FG_18[['SwStr.']])
+FG_18[['O.Swing...pfx.']] = pct_to_number(FG_18[['O.Swing...pfx.']])
+FG_18[['Z.Swing...pfx.']] = pct_to_number(FG_18[['Z.Swing...pfx.']])
+FG_18[['Swing...pfx.']] = pct_to_number(FG_18[['Swing...pfx.']])
+FG_18[['O.Contact...pfx.']] = pct_to_number(FG_18[['O.Contact...pfx.']])
+FG_18[['Z.Contact...pfx.']] = pct_to_number(FG_18[['Z.Contact...pfx.']])
+FG_18[['Contact...pfx.']] = pct_to_number(FG_18[['Contact...pfx.']])
+FG_18[['Zone...pfx.']] = pct_to_number(FG_18[['Zone...pfx.']])
+FG_18[['O.Swing...pi.']] = pct_to_number(FG_18[['O.Swing...pi.']])
+FG_18[['Z.Swing...pi.']] = pct_to_number(FG_18[['Z.Swing...pi.']])
+FG_18[['Swing...pi.']] = pct_to_number(FG_18[['Swing...pi.']])
+FG_18[['Z.Contact...pi.']] = pct_to_number(FG_18[['Z.Contact...pi.']])
+FG_18[['Contact...pi.']] = pct_to_number(FG_18[['Contact...pi.']])
+FG_18[['Zone...pi.']] = pct_to_number(FG_18[['Zone...pi.']])
+FG_18[['O.Contact...pi.']] = pct_to_number(FG_18[['O.Contact...pi.']])
+
+BS_18 = subset(BShitters_18, select = -c(last_name, first_name, year, pop_2b_sba_count, pop_2b_sba, pop_2b_sb, pop_2b_cs, pop_3b_sba_count, pop_3b_sba, pop_3b_sb, pop_3b_cs, exchange_2b_3b_sba, maxeff_arm_2b_3b_sba, n_outs_above_average, rel_league_reaction_distance, rel_league_burst_distance, rel_league_routing_distance, rel_league_bootup_distance, f_bootup_distance))
+```
+
+With each unique data set, I run a principle component analysis on the variables provided by both FanGraphs and Baseball Savant. Considering the large amount of statistics available, along with some variables being used as inputs for other variables (strikeout rates having a massive impact on one's fielding independent pitching, for example), PCA would be a smart way to deciphering the most important aspects of each variable while also not having an issue with correlation throughout. 
+
+```{r include=FALSE}
+# Building the PCAs for each dataset, starting with the hitters in 2015, then pitchers, all the way
+# up to 2018 pitchers
+FG_results_15 = FG_15 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfghitters_15 = prcomp(~ . - WAR, data = FG_results_15, scale = TRUE)
+
+BS_results_15 = BS_15 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbshitters_15 = prcomp(~ . - WAR, data = BS_results_15, scale = TRUE)
+
+PFG_results_15 = FGP_15 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfgpitchers_15 = prcomp(~ . - WAR, data = PFG_results_15, scale = TRUE)
+
+BSP_results_15 = BSP_15 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbspitchers_15 = prcomp(~ . - WAR, data = BSP_results_15, scale = TRUE)
+
+FG_results_16 = FG_16 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfghitters_16 = prcomp(~ . - WAR, data = FG_results_16, scale = TRUE)
+
+BS_results_16 = BS_16 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbshitters_16 = prcomp(~ . - WAR, data = BS_results_16, scale = TRUE)
+
+FGP_results_16 = FGP_16 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfgpitchers_16 = prcomp(~ . - WAR, data = FGP_results_16, scale = TRUE)
+
+BSP_results_16 = BSP_16 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbspitchers_16 = prcomp(~ . - WAR, data = BSP_results_16, scale = TRUE)
+
+FG_results_17 = FG_17 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfghitters_17 = prcomp(~ . - WAR, data = FG_results_17, scale = TRUE)
+
+BS_results_17 = BS_17 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbshitters_17 = prcomp(~ . - WAR, data = BS_results_17, scale = TRUE)
+
+FGP_results_17 = FGP_17 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfgpitchers_17 = prcomp(~ . - WAR, data = FGP_results_17, scale = TRUE)
+
+BSP_results_17 = BSP_17 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbspitchers_17 = prcomp(~ . - WAR, data = BSP_results_17, scale = TRUE)
+
+FG_results_18 = FG_18 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfghitters_18 = prcomp(~ . - WAR, data = FG_results_18, scale = TRUE)
+
+BS_results_18 = BS_18 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbshitters_18 = prcomp(~ . - WAR, data = BS_results_18, scale = TRUE)
+
+FGP_results_18 = FGP_18 %>%
+  group_by(Name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="Name")
+
+PCAfgpitchers_18 = prcomp(~ . - WAR, data = FGP_results_18, scale = TRUE)
+
+BSP_results_18 = BSP_18 %>%
+  group_by(name) %>% 
+  summarize_all(mean) %>%
+  column_to_rownames(var="name")
+
+PCAbspitchers_18 = prcomp(~ . - WAR, data = BSP_results_18, scale = TRUE)
+```
+
+Running principal component analysis on each of these data sets (thus, a total of 16 times) results in anywhere from 44 to 71 principal components that explain 100% of the variation within the problem. The data set in which PC1 explains the most amount of variance is the FanGraph's pitchers database, which consistently explains around 33% of the variation in player WAR. The lowest, and most spread out among its principal components, is the 2017 and 2018 Baseball Savant analyses, as seen in Figure 1. 
+
+```{r echo=FALSE, warning=FALSE, cache=TRUE}
+plot(PCAbspitchers_18, main =
+       "Figure 1: Percent Variation Explained by Each Principal Component", 
+     xlab = "Principal Components", sub = "2018 Baseball Savant Pitcher Statistics")
+```
+
+This is most likely due to the introduction of the new statistics on pitch tracking, thus spreading around the effect that each variable has on a player's future performance. An example of how these principal components have an effect depending on players involved is seen in the results section in Figure 2. 
+
+I whittle down each of these data sets to the number of PC's that provide the best predictive performance when computing the random forests later, resulting in a minimum of 5 PCs (2017 Fangraph's hitters) to a maximum of 25 PCs (2016 Baseball Savant's hitters) used, depending on how low the RMSE is in my future analysis.  
+
+```{r include=FALSE}
+# 8 PCs used for the lowest RMSE
+round(PCAfghitters_15$rotation[,1:8],2) 
+FGhittersWAR_15 = merge(WARhitters_2015, PCAfghitters_15$x[,1:8], by="row.names")
+FGhittersWAR_15 = rename(FGhittersWAR_15, Player = Row.names)
+
+# 13 PCs used for the lowest RMSE
+round(PCAbshitters_15$rotation[,1:13],2) 
+BShittersWAR_15 = merge(WARhitters_2015, PCAbshitters_15$x[,1:13], by="row.names")
+BShittersWAR_15 = rename(BShittersWAR_15, Player = Row.names)
+
+# 9 PCs used for the lowest RMSE
+round(PCAfgpitchers_15$rotation[,1:9],2) 
+FGpitchersWAR_15 = merge(WARpitchers_2015, PCAfgpitchers_15$x[,1:9], by="row.names")
+FGpitchersWAR_15 = rename(FGpitchersWAR_15, Player = Row.names)
+
+# 10 PCs used for the lowest RMSE
+round(PCAbspitchers_15$rotation[,1:10],2) 
+BSpitchersWAR_15 = merge(WARpitchers_2015, PCAbspitchers_15$x[,1:10], by="row.names")
+BSpitchersWAR_15 = rename(BSpitchersWAR_15, Player = Row.names)
+
+# 9 PCs used for the lowest RMSE
+round(PCAfghitters_16$rotation[,1:9],2) 
+FGhittersWAR_16 = merge(WARhitters_2016, PCAfghitters_16$x[,1:9], by="row.names")
+FGhittersWAR_16 = rename(FGhittersWAR_16, Player = Row.names)
+
+# 25 PCs used for the lowest RMSE
+round(PCAbshitters_16$rotation[,1:25],2) 
+BShittersWAR_16 = merge(WARhitters_2016, PCAbshitters_16$x[,1:25], by="row.names")
+BShittersWAR_16 = rename(BShittersWAR_16, Player = Row.names)
+
+# 10 PCs used for the lowest RMSE
+round(PCAfgpitchers_16$rotation[,1:10],2) 
+FGpitchersWAR_16 = merge(WARpitchers_2016, PCAfgpitchers_16$x[,1:10], by="row.names")
+FGpitchersWAR_16 = rename(FGpitchersWAR_16, Player = Row.names)
+
+# 7 PCs used for the lowest RMSE
+round(PCAbspitchers_16$rotation[,1:7],2) 
+BSpitchersWAR_16 = merge(WARpitchers_2016, PCAbspitchers_16$x[,1:7], by="row.names")
+BSpitchersWAR_16 = rename(BSpitchersWAR_16, Player = Row.names)
+
+# 5 PCs used for the lowest RMSE
+round(PCAfghitters_17$rotation[,1:5],2) 
+FGhittersWAR_17 = merge(WARhitters_2017, PCAfghitters_17$x[,1:5], by="row.names")
+FGhittersWAR_17 = rename(FGhittersWAR_17, Player = Row.names)
+
+# 11 PCs used for the lowest RMSE
+round(PCAbshitters_17$rotation[,1:11],2) 
+BShittersWAR_17 = merge(WARhitters_2017, PCAbshitters_17$x[,1:11], by="row.names")
+BShittersWAR_17 = rename(BShittersWAR_17, Player = Row.names)
+
+# 10 PCs used for the lowest RMSE
+round(PCAfgpitchers_17$rotation[,1:10],2) 
+FGpitchersWAR_17 = merge(WARpitchers_2017, PCAfgpitchers_17$x[,1:10], by="row.names")
+FGpitchersWAR_17 = rename(FGpitchersWAR_17, Player = Row.names)
+
+# 6 PCs used for the lowest RMSE
+round(PCAbspitchers_17$rotation[,1:6],2) 
+BSpitchersWAR_17 = merge(WARpitchers_2017, PCAbspitchers_17$x[,1:6], by="row.names")
+BSpitchersWAR_17 = rename(BSpitchersWAR_17, Player = Row.names)
+
+# 23 PCs used for the lowest RMSE
+round(PCAfghitters_18$rotation[,1:23],2) 
+FGhittersWAR_2018 = merge(WARhitters_2018, PCAfghitters_18$x[,1:23], by="row.names")
+FGhittersWAR_2018 = rename(FGhittersWAR_2018, Player = Row.names)
+
+# 10 PCs used for the lowest RMSE
+round(PCAbshitters_18$rotation[,1:10],2) 
+BShittersWAR_2018 = merge(WARhitters_2018, PCAbshitters_18$x[,1:10], by="row.names")
+BShittersWAR_2018 = rename(BShittersWAR_2018, Player = Row.names)
+
+# 16 PCs used for the lowest RMSE
+round(PCAfgpitchers_18$rotation[,1:16],2) 
+FGpitchersWAR_18 = merge(WARpitchers_2018, PCAfgpitchers_18$x[,1:16], by="row.names")
+FGpitchersWAR_18 = rename(FGpitchersWAR_18, Player = Row.names)
+
+# 15 PCs used for the lowest RMSE
+round(PCAbspitchers_18$rotation[,1:15],2) 
+BSpitchersWAR_18 = merge(WARpitchers_2018, PCAbspitchers_18$x[,1:15], by="row.names")
+BSpitchersWAR_18 = rename(BSpitchersWAR_18, Player = Row.names)
+
+BSpitchersWAR_18_bust = subset(BSpitchersWAR_18, WAR < 0.3)
+BSpitchersWAR_18_elite = subset(BSpitchersWAR_18, WAR > 2)
+```
+
+Using the principal components for each data set I then run a random forest, attempting to predict a player's wins above replacement in the following year. In order to generate the most accurate predictions, I randomly sampled 80% of the data at hand and used that as a training set on which I built my model while using the other 20% as a test set on which I tested the model to gather a sufficient RMSE. This then allows me to measure the out-of-sample performance. 
+
+Finally, to address the issue of random variation with the selection of data points that end up in our train/test split, I ran a do-loop. This averaged the estimate of out-of-sample RMSEs over 250 different random train/test splits, to which I felt comfortable with the lack of random variation in the results that were being generated.
+
+# Results
+Below in Figures 2 and 3, as addressed earlier, is an example of the pitchers in the 2018 season being plotted according to how they rated statistically among the principal components 1 and 2. Figure 2 is meant to show the players that had an elite year (in the top 25%) in 2019 in terms of WAR and their comparable statistics among the first to PCs. Figure 3 shows the comparable bottom 25% of the pitcher class for 2019 WAR, or "the busts", and how they rated among the first to PCs.
+
+```{r echo=FALSE, warning=FALSE, cache=TRUE}
+elite_graph <- ggplot(BSpitchersWAR_18_elite) + 
+  geom_text(aes(x=PC1, y=PC2, label=Player), size=2) +
+  xlim(-15, 10) +
+  ylim(-10, 10) +
+  labs(title = "Figure 2: Distribution of Elite Players Based On Principal Components 1 and 2", 
+       subtitle = "2018 Baseball Savant Pitcher Statistics")
+
+bust_graph <- ggplot(BSpitchersWAR_18_bust) + 
+  geom_text(aes(x=PC1, y=PC2, label=Player), size=2) +
+  xlim(-15, 10) +
+  ylim(-10, 10) +
+  labs(title = "Figure 3: Distribution of Bust Players Based On Principal Components 1 and 2", 
+       subtitle = "2018 Baseball Savant Pitcher Statistics")
+
+grid.arrange(elite_graph, bust_graph, ncol=2)
+```
+
+The players to the left of PC1 tended to be more adept pitchers, which is judged through various statistics. The highest weighted of those is opponents' expected slugging percentage, expected weighted on-base average, and expected isolated power, among other things. Clearly, these are pitchers that limit players getting on base and limit extra base hits (doubles, triples, home runs). 
+
+PC2 on the otherhand heavily weighs pitchers who throw a lot of innings (the better you perform, the more innings you'll be asked to throw), give up minimal "barrels" (a hit whose comparable hit types have led to a minimum .500 batting average and 1.500 slugging percentage based on exit velocity and launch angle), and get a lot of swings and misses on out-of-the-zone pitches. 
+
+These figures, along with all of the other principal component graphs available from evaluating these data sets, won't ever give a full picture of a high-performing pitcher in the MLB. However, it does show a little bit of the grouping of the elite at the position.
+
+Finally, Tables 1 and 2 aim to address the question at hand: which website's advanced statistics do a better job of predicting future performance, FanGraphs or Baseball Savant? Table 1 is strictly for comparing Fangraphs and Baseball Savant's predictive power for pitcher performance throughout the time frame.
+
+```{r include=FALSE, warning=FALSE, cache=TRUE}
+n = nrow(FGhittersWAR_15)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGhittersWAR_15 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGhittersWAR_15_train = FGhittersWAR_15[train_cases,]
+  FGhittersWAR_15_test = FGhittersWAR_15[test_cases,]
+  forestFG_15 = randomForest(WAR ~ . - Player, data = FGhittersWAR_15_train)
+  
+  yhat_forestFG_15 = predict(forestFG_15, FGhittersWAR_15_test)
+  rmse_forestFG_15 = mean((yhat_forestFG_15 - FGhittersWAR_15_test$WAR)^2) %>% sqrt
+} 
+FGhittersWAR_2015 = mean(out_rf_FGhittersWAR_15$result)
+
+n = nrow(BShittersWAR_15)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BShittersWAR_15 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BShittersWAR_15_train = BShittersWAR_15[train_cases,]
+  BShittersWAR_15_test = BShittersWAR_15[test_cases,]
+  forestBS_15 = randomForest(WAR ~ . - Player, data = BShittersWAR_15_train)
+  
+  yhat_forestBS_15 = predict(forestBS_15, BShittersWAR_15_test)
+  rmse_forestBS_15 = mean((yhat_forestBS_15 - BShittersWAR_15_test$WAR)^2) %>% sqrt
+} 
+BShittersWAR_2015 = mean(out_rf_BShittersWAR_15$result)
+
+n = nrow(FGpitchersWAR_15)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGpitchersWAR_15 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGpitchersWAR_15_train = FGpitchersWAR_15[train_cases,]
+  FGpitchersWAR_15_test = FGpitchersWAR_15[test_cases,]
+  forestPFG_15 = randomForest(WAR ~ . - Player, data = FGpitchersWAR_15_train)
+  
+  yhat_forestPFG_15 = predict(forestPFG_15, FGpitchersWAR_15_test)
+  rmse_forestPFG_15 = mean((yhat_forestPFG_15 - FGpitchersWAR_15_test$WAR)^2) %>% sqrt
+} 
+FGpitchersWAR_2015 = mean(out_rf_FGpitchersWAR_15$result)
+
+n = nrow(BSpitchersWAR_15)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BSpitchersWAR_15 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BSpitchersWAR_15_train = BSpitchersWAR_15[train_cases,]
+  BSpitchersWAR_15_test = BSpitchersWAR_15[test_cases,]
+  forestBSP_15 = randomForest(WAR ~ . - Player, data = BSpitchersWAR_15_train)
+  
+  yhat_forestBSP_15 = predict(forestBSP_15, BSpitchersWAR_15_test)
+  rmse_forestBSP_15 = mean((yhat_forestBSP_15 - BSpitchersWAR_15_test$WAR)^2) %>% sqrt
+} 
+BSpitchersWAR_2015 = mean(out_rf_BSpitchersWAR_15$result)
+
+n = nrow(FGhittersWAR_16)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGhittersWAR_16 = do(100)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGhittersWAR_16_train = FGhittersWAR_16[train_cases,]
+  FGhittersWAR_16_test = FGhittersWAR_16[test_cases,]
+  forestFG_16 = randomForest(WAR ~ . - Player, data = FGhittersWAR_16_train)
+  
+  yhat_forestFG_16 = predict(forestFG_16, FGhittersWAR_16_test)
+  rmse_forestFG_16 = mean((yhat_forestFG_16 - FGhittersWAR_16_test$WAR)^2) %>% sqrt
+} 
+FGhittersWAR_2016 = mean(out_rf_FGhittersWAR_16$result)
+
+n = nrow(BShittersWAR_16)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BShittersWAR_16 = do(100)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BShittersWAR_16_train = BShittersWAR_16[train_cases,]
+  BShittersWAR_16_test = BShittersWAR_16[test_cases,]
+  forestBS_16 = randomForest(WAR ~ . - Player, data = BShittersWAR_16_train)
+  
+  yhat_forestBS_16 = predict(forestBS_16, BShittersWAR_16_test)
+  rmse_forestBS_16 = mean((yhat_forestBS_16 - BShittersWAR_16_test$WAR)^2) %>% sqrt
+} 
+BShittersWAR_2016 = mean(out_rf_BShittersWAR_16$result)
+
+n = nrow(FGpitchersWAR_16)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGpitchersWAR_16 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGpitchersWAR_16_train = FGpitchersWAR_16[train_cases,]
+  FGpitchersWAR_16_test = FGpitchersWAR_16[test_cases,]
+  forestFGP_16 = randomForest(WAR ~ . - Player, data = FGpitchersWAR_16_train)
+  
+  yhat_forestFGP_16 = predict(forestFGP_16, FGpitchersWAR_16_test)
+  rmse_forestFGP_16 = mean((yhat_forestFGP_16 - FGpitchersWAR_16_test$WAR)^2) %>% sqrt
+} 
+FGpitchersWAR_2016 = mean(out_rf_FGpitchersWAR_16$result)
+
+n = nrow(BSpitchersWAR_16)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BSpitchersWAR_16 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BSpitchersWAR_16_train = BSpitchersWAR_16[train_cases,]
+  BSpitchersWAR_16_test = BSpitchersWAR_16[test_cases,]
+  forestBSP_16 = randomForest(WAR ~ . - Player, data = BSpitchersWAR_16_train)
+  
+  yhat_forestBSP_16 = predict(forestBSP_16, BSpitchersWAR_16_test)
+  rmse_forestBSP_16 = mean((yhat_forestBSP_16 - BSpitchersWAR_16_test$WAR)^2) %>% sqrt
+} 
+BSpitchersWAR_2016 = mean(out_rf_BSpitchersWAR_16$result)
+
+n = nrow(FGhittersWAR_17)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGhittersWAR_17 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGhittersWAR_17_train = FGhittersWAR_17[train_cases,]
+  FGhittersWAR_17_test = FGhittersWAR_17[test_cases,]
+  forestFG_17 = randomForest(WAR ~ . - Player, data = FGhittersWAR_17_train)
+  
+  yhat_forestFG_17 = predict(forestFG_17, FGhittersWAR_17_test)
+  rmse_forestFG_17 = mean((yhat_forestFG_17 - FGhittersWAR_17_test$WAR)^2) %>% sqrt
+} 
+FGhittersWAR_2017 = mean(out_rf_FGhittersWAR_17$result)
+
+n = nrow(BShittersWAR_17)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BShittersWAR_17 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BShittersWAR_17_train = BShittersWAR_17[train_cases,]
+  BShittersWAR_17_test = BShittersWAR_17[test_cases,]
+  forestBS_17 = randomForest(WAR ~ . - Player, data = BShittersWAR_17_train)
+  
+  yhat_forestBS_17 = predict(forestBS_17, BShittersWAR_17_test)
+  rmse_forestBS_17 = mean((yhat_forestBS_17 - BShittersWAR_17_test$WAR)^2) %>% sqrt
+} 
+BShittersWAR_2017 = mean(out_rf_BShittersWAR_17$result)
+
+n = nrow(FGpitchersWAR_17)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGpitchersWAR_17 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGpitchersWAR_17_train = FGpitchersWAR_17[train_cases,]
+  FGpitchersWAR_17_test = FGpitchersWAR_17[test_cases,]
+  forestFGP_17 = randomForest(WAR ~ . - Player, data = FGpitchersWAR_17_train)
+  
+  yhat_forestFGP_17 = predict(forestFGP_17, FGpitchersWAR_17_test)
+  rmse_forestFGP_17 = mean((yhat_forestFGP_17 - FGpitchersWAR_17_test$WAR)^2) %>% sqrt
+} 
+FGpitchersWAR_2017 = mean(out_rf_FGpitchersWAR_17$result)
+
+n = nrow(BSpitchersWAR_17)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BSpitchersWAR_17 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BSpitchersWAR_17_train = BSpitchersWAR_17[train_cases,]
+  BSpitchersWAR_17_test = BSpitchersWAR_17[test_cases,]
+  forestBSP_17 = randomForest(WAR ~ . - Player, data = BSpitchersWAR_17_train)
+  
+  yhat_forestBSP_17 = predict(forestBSP_17, BSpitchersWAR_17_test)
+  rmse_forestBSP_17 = mean((yhat_forestBSP_17 - BSpitchersWAR_17_test$WAR)^2) %>% sqrt
+} 
+BSpitchersWAR_2017 = mean(out_rf_BSpitchersWAR_17$result)
+
+n = nrow(FGhittersWAR_2018)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGhittersWAR_2018 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGhittersWAR_2018_train = FGhittersWAR_2018[train_cases,]
+  FGhittersWAR_2018_test = FGhittersWAR_2018[test_cases,]
+  forestFG_18 = randomForest(WAR ~ . - Player, data = FGhittersWAR_2018_train)
+  
+  yhat_forestFG_18 = predict(forestFG_18, FGhittersWAR_2018_test)
+  rmse_forestFG_18 = mean((yhat_forestFG_18 - FGhittersWAR_2018_test$WAR)^2) %>% sqrt
+} 
+FGhittersWAR_2018 = mean(out_rf_FGhittersWAR_2018$result)
+
+n = nrow(BShittersWAR_2018)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BShittersWAR_2018 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BShittersWAR_2018_train = BShittersWAR_2018[train_cases,]
+  BShittersWAR_2018_test = BShittersWAR_2018[test_cases,]
+  forestBS_18 = randomForest(WAR ~ . - Player, data = BShittersWAR_2018_train)
+  
+  yhat_forestBS_18 = predict(forestBS_18, BShittersWAR_2018_test)
+  rmse_forestBS_18 = mean((yhat_forestBS_18 - BShittersWAR_2018_test$WAR)^2) %>% sqrt
+} 
+BShittersWAR_2018 = mean(out_rf_BShittersWAR_2018$result)
+
+n = nrow(FGpitchersWAR_18)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_FGpitchersWAR_18 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  FGpitchersWAR_18_train = FGpitchersWAR_18[train_cases,]
+  FGpitchersWAR_18_test = FGpitchersWAR_18[test_cases,]
+  forestFGP_18 = randomForest(WAR ~ . - Player, data = FGpitchersWAR_18_train)
+  
+  yhat_forestFGP_18 = predict(forestFGP_18, FGpitchersWAR_18_test)
+  rmse_forestFGP_18 = mean((yhat_forestFGP_18 - FGpitchersWAR_18_test$WAR)^2) %>% sqrt
+} 
+FGpitchersWAR_2018 = mean(out_rf_FGpitchersWAR_18$result)
+
+n = nrow(BSpitchersWAR_18)
+n_train = round(0.8*n)  # round to nearest integer
+n_test = n - n_train
+
+out_rf_BSpitchersWAR_18 = do(250)*{
+  train_cases = sample.int(n, n_train, replace=FALSE)
+  test_cases = setdiff(1:n, train_cases)
+  BSpitchersWAR_18_train = BSpitchersWAR_18[train_cases,]
+  BSpitchersWAR_18_test = BSpitchersWAR_18[test_cases,]
+  forestBS_18 = randomForest(WAR ~ . - Player, data = BSpitchersWAR_18_train)
+  
+  yhat_forestBS_18 = predict(forestBS_18, BSpitchersWAR_18_test)
+  rmse_forestBS_18 = mean((yhat_forestBS_18 - BSpitchersWAR_18_test$WAR)^2) %>% sqrt
+} 
+BSpitchersWAR_2018 = mean(out_rf_BSpitchersWAR_18$result)
+```
+
+```{r echo=FALSE, warning=FALSE, cache=TRUE}
+RMSE_pitchers_table <- data.frame("Year" = c("2015", "2016", "2017", "2018"),
+                                  "FanGraphs" = c(FGpitchersWAR_2015, FGpitchersWAR_2016,
+                                                  FGpitchersWAR_2017, FGpitchersWAR_2018), 
+                                  "Baseball Savant" = c(BSpitchersWAR_2015, BSpitchersWAR_2016,
+                                                        BSpitchersWAR_2017, BSpitchersWAR_2018))
+                                  
+RMSE_hitters_table <- data.frame("Year" = c("2015", "2016", "2017", "2018"),
+                                 "FanGraphs" = c(FGhittersWAR_2015, FGhittersWAR_2016,
+                                                  FGhittersWAR_2017, FGhittersWAR_2018), 
+                                  "Baseball Savant" = c(BShittersWAR_2015, BShittersWAR_2016,
+                                                        BShittersWAR_2017, BShittersWAR_2018))
+```
+
+```{r echo=FALSE, warning=FALSE, cache=TRUE}
+kable(RMSE_pitchers_table,  
+      caption = "Table 1: Root-Mean-Square Error in Predicting Future Pitcher Performance")
+```
+
+Table 2, on the otherhand, is reserved for comparing the performance of the two websites' advanced statistics on predicting future hitters' performance from 2015-2018. 
+
+```{r echo=FALSE, warning=FALSE, cache=TRUE}
+kable(RMSE_hitters_table, 
+      caption = "Table 2: Root-Mean-Square Error in Predicting Future Hitter Performance")
+```
+
+# Conclusion
+As we can see from the two tables, FanGraphs and Baseabll Savant are generally pretty similar when it comes to accuracy in predicting future player performance. Each website tends to struggle more with evaluating hitters than pitchers, displaying the difficulty in gathering good data on the hitters throughout the league.
+
+From Table 1, we can gather that FanGraphs and Baseball Savant share equally respectable predictive power when it comes to evaluating future pitcher performance. From 2015-2016, each website can pride itself on having done better than its competitor. In my opinion, this wasn't shocking given the sheer amount of valuable data Baseball Savant offers when it comes to pitcher evaluation.
+
+The most surprising part, however, is from 2017-2018, Baseball Savant crumbles in comparison to FanGraphs' predictive performance. Keep in mind, 2017 and 2018 is when Baseball Savant began using data on individual pitch performance, evaluating spin rates, break, and velocity. It seems as if this extra data actually has a negative effect on Baseball Savant's predictive power, a shocking result from my understanding of the advanced statistics world.
+
+On the hitter side, FanGraphs and Baseball Savant stay relatively simmilar in their predictions year over year, aside from a bit of a decline for FanGraphs in 2016. Regardless, FanGraphs consistently offers the more accurate predictions for future hitter WAR than Baseball Savant.
+
+Overall, FanGraphs' advanced statistics offer more appeal as the most accurate predictor of future player performance based on the next season's WAR. Thus, whether one is a general manager seeking to bid on a free agent or an aspiring graduate looking for a job in the field, those working in baseball analytics should start with the industry standard: FanGraphs. 
