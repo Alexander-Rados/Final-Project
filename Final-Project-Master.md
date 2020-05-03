@@ -172,9 +172,9 @@ variation in the results that were being generated.
 Below in Figures 2 and 3, as addressed earlier, is an example of the
 pitchers in the 2018 season being plotted according to how they rated
 statistically among the principal components 1 and 2. Figure 2 is meant
-to show the players that had an elite year (in the top 25%) in 2019 in
+to show the players that had an elite year (in the top 10%) in 2019 in
 terms of WAR and their comparable statistics among the first two PCs.
-Figure 3 shows the comparable bottom 25% of the pitcher class for 2019
+Figure 3 shows the comparable bottom 10% of the pitcher class for 2019
 WAR, or “the busts”, and how they rated among the first two PCs.
 
 ![](Final-Project-Master_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->

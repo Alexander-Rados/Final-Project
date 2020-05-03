@@ -535,8 +535,8 @@ round(PCAbspitchers_18$rotation[,1:15],2)
 BSpitchersWAR_18 = merge(WARpitchers_2018, PCAbspitchers_18$x[,1:15], by="row.names")
 BSpitchersWAR_18 = rename(BSpitchersWAR_18, Player = Row.names)
 
-BSpitchersWAR_18_bust = subset(BSpitchersWAR_18, WAR < 0.3)
-BSpitchersWAR_18_elite = subset(BSpitchersWAR_18, WAR > 2)
+BSpitchersWAR_18_bust = subset(BSpitchersWAR_18, WAR < -0.1)
+BSpitchersWAR_18_elite = subset(BSpitchersWAR_18, WAR > 3.9)
 ```
 
 Using the principal components for each data set I then run a random forest, attempting to predict a player's wins above replacement in the following year. In order to generate the most accurate predictions, I randomly sampled 80% of the data at hand and used that as a training set on which I built my model while using the other 20% as a test set on which I tested the model to gather a sufficient RMSE. This then allows me to measure the out-of-sample performance. 
@@ -544,9 +544,9 @@ Using the principal components for each data set I then run a random forest, att
 Finally, to address the issue of random variation with the selection of data points that end up in our train/test split, I ran a do-loop. This averaged the estimate of out-of-sample RMSEs over 250 different random train/test splits, to which I felt comfortable with the lack of random variation in the results that were being generated.
 
 # Results
-Below in Figures 2 and 3, as addressed earlier, is an example of the pitchers in the 2018 season being plotted according to how they rated statistically among the principal components 1 and 2. Figure 2 is meant to show the players that had an elite year (in the top 25%) in 2019 in terms of WAR and their comparable statistics among the first two PCs. Figure 3 shows the comparable bottom 25% of the pitcher class for 2019 WAR, or "the busts", and how they rated among the first two PCs.
+Below in Figures 2 and 3, as addressed earlier, is an example of the pitchers in the 2018 season being plotted according to how they rated statistically among the principal components 1 and 2. Figure 2 is meant to show the players that had an elite year (in the top 10%) in 2019 in terms of WAR and their comparable statistics among the first two PCs. Figure 3 shows the comparable bottom 10% of the pitcher class for 2019 WAR, or "the busts", and how they rated among the first two PCs.
 
-```{r echo=FALSE, warning=FALSE, cache=TRUE}
+```{r echo=FALSE, warning=FALSE}
 elite_graph <- ggplot(BSpitchersWAR_18_elite) + 
   geom_text(aes(x=PC1, y=PC2, label=Player), size=2) +
   xlim(-15, 10) +
@@ -641,7 +641,7 @@ n = nrow(FGhittersWAR_16)
 n_train = round(0.8*n)  # round to nearest integer
 n_test = n - n_train
 
-out_rf_FGhittersWAR_16 = do(100)*{
+out_rf_FGhittersWAR_16 = do(250)*{
   train_cases = sample.int(n, n_train, replace=FALSE)
   test_cases = setdiff(1:n, train_cases)
   FGhittersWAR_16_train = FGhittersWAR_16[train_cases,]
@@ -657,7 +657,7 @@ n = nrow(BShittersWAR_16)
 n_train = round(0.8*n)  # round to nearest integer
 n_test = n - n_train
 
-out_rf_BShittersWAR_16 = do(100)*{
+out_rf_BShittersWAR_16 = do(250)*{
   train_cases = sample.int(n, n_train, replace=FALSE)
   test_cases = setdiff(1:n, train_cases)
   BShittersWAR_16_train = BShittersWAR_16[train_cases,]
