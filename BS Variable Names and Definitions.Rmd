@@ -1,0 +1,106 @@
+---
+title: "Baseball Savant's Variable Names and Definitions"
+author: "Alex Rados"
+date: "5/7/2020"
+output: 
+  github_document:
+    toc: True
+---
+Below are the variable names and their definitions for Baseball Savant. The first variable will be the one seen in R studio, the definition will follow, then in paranetheses will be what the variable actually is according to Baseball Savant (as downloading them into R alters the naming).
+
+- last_name: Player's last name
+- first_name: Player's first name
+- year: Year for which the counting statistics were accrued (everything but WAR)
+- name: Player name
+- xba: Expected batting average
+- xslug: Expected slugging percentage
+- xwoba: Expected weighted on base average
+- xobp: Expected on base percentage
+- xiso: Expected isolated power
+- wobacon: Weighted on base average on contact
+- xwobacon: Expected weighted on base average on contact
+- bacon: Batting average on contact
+- xbacon: Expected batting average on contact
+- xbadiff: Difference between expected and actual batting average on contact (BA-xBA)
+- xslugdiff: Difference between expected and actual slugging percentages (SLG-xSLG)
+- wobadif: Difference between expected and actual on base averages (wOBA-xwOBA)
+- exit_velocity_avg: Average exit velocity of balls hit into play (AVG EV (MPH))
+- launch_angle_avg: Average launch angle of balls hit into play (AVG LA (in degrees))
+- sweet_spot_percent: Percent of batted ball events with a launch angle between 8 and 32 degrees (Sweet Spot %)
+- barrels: A batted ball with the perfect combination of exit velocity and launch angle, or the most high-value batted balls. (A barrel has a minimum Expected Batting Average of .500 and Expected Slugging Percentage of 1.500)
+- barrel_batted_rate: Percent of batted ball events with a barrel (Barrel %)
+- solidcontact_percent: Percent of batted ball events with solid contact (Solid Contact %)
+- flareburner_percent: Percent of batted ball events with ending in a flare/burner type hit (Flare/Burner %)
+- poorlyunder_percent: Percent of batted ball events on which the player got under the ball (Under %)
+- poorlytopped_percent: Percent of batted ball events on which the player got on top of the ball (Topped %)
+- poorlyweak_percent: Percent of batted ball events with poor/weak contact (Poor/Weak %)
+- hard_hit_percent: Percent of batted ball events ending with a hard hit (Hard Hit %)
+- z_swing_percent: Percentage of pitches a batter swings at inside the strike zone (Zone Swing %)
+- z_swing_miss_percent: Percentage of pitches a batter swings and misses at inside the strike zone (Zone Swing & Miss %)
+- oz_swing_percent: Percentage of pitches a batter swings at outside the strike zone (Out of Zone Swing %)
+- oz_contact_percent: Percentage of pitches a batter makes contact on outside the strike zone (Out of Zone Contact %)
+- out_zone_swing_miss: Number of pitches a batter swings and misses at outside the strike zone (Out of Zone Swing & Miss)
+- out_zone_swing: Number of pitches a batter swings at outside the strike zone (Out of Zone Swings)
+- out_zone_percent: Percent of pitches thrown outside of the strike zone (Out of Zone %)
+- out_zone: Number of pitches thrown outside of the strike zone (Out of Zone)
+- meatball_swing_percent: Percent of meatball pitches (easy to hit, right down the middle) swung at (Meatball Swing %)
+- meatball_percent: Percent of meatball pitches thrown (Meatball %)
+- iz_contact_percent: In zone contact percentage (In Zone Contact %)
+- in_zone_swing_miss: Number of pitches in the zone swung and missed on (In Zone Swing & Miss)
+- whiff_percent: Percent of the time swinging and missing (Whiff %)
+- swing_percent: Percent of the time swinging (Swing %)
+- groundballs_percent: Percent ground balls (GB%)
+- flyballs_percent: Percent fly balls (FB%)
+- linedrives_percent: Percent line drives (LD%)
+- popups_percent: Percent pop-ups (Popup%)
+- pop_2b_sba_count: Total steals of second base attempted (2B Attempts)
+- pop_2b_sba: Catcher pop time on total steal attempts of second base (Poptime 2B All)
+- pop_2b_sb: Catcher pop time on steals of second base (Poptime 2B on SB)
+- pop_2b_cs: Catcher pop time on caught stealings of second base (Poptime 2B on CS)
+- pop_3b_sba_count: Total steals of third base attempted (3B Attempts)
+- pop_3b_sba: Catcher pop time on total steal attempts of third base (Poptime 3B All)
+- pop_3b_sb: Catcher pop time on steals of third base (Poptime 3B on SB)
+- pop_3b_cs: Catcher pop time on caught stealings of third base (Poptime 3B on CS)
+- exchange_2b_3b_sba: Exchange from glove to hand on throws for steals of second and third base (Exchange)
+- maxeff_arm_2b_3b_sba: Arm strength on steals of second and third base (Arm Strength)
+- n_outs_above_average: Number of outs above the league average, defensively, on both plays made and difficulty of said plays (OAA)
+- rel_league_reaction_distance: Feet covered (in any direction) in the first 1.5 seconds relative to league average (Reaction)
+- rel_league_burst_distance: Feet covered (in any direction) in the second 1.5 seconds relative to league average (Burst)
+- rel_league_routing_distance: Compares feet covered in any direction to feet covered in the correct direction over the full three seconds relative to league average (Route)
+- rel_league_bootup_distance: Feed covered defensively on a play for that individual player compared to league average (Feet vs Avg)
+- f_bootup_distance: Amount feet covered defensively on a play for that individual player (Feet Covered)
+- n_bolts: Number of bolts, a run where the Sprint Speed (defined as "feet per second in a player's fastest one-second window") of the runner is at least 30 ft/sec (Bolts)
+- hp_to_1b: Time elapsed from the point of bat-on-ball contact to the moment the batter reaches first base (HP to 1B)
+- spring_speed: How many feet per second a player runs in his fastest one-second window (Spring Speed)
+- WAR: Wins above replacement
+- oz_swing_miss_percent: Percent of pitches outside the zone swung and missed on (Out of Zone Swing & Miss %)
+- pitch_count_offspeed: Number of offspeed pitches thrown (# Offspeed)
+- pitch_count_fastball: Number of fastballs thrown (# Fastball)
+- pitch_count_breaking: Number of breaking pitches (curveballs, sliders, etc.) thrown (# Breaking)
+- in_zone_percent: Percent of pitches in the zone (In Zone %)
+- edge_percent: Percent of pitches on the edge of the zone (Edge %)
+- f_strike_percent: Percent of first pitches in an at-bat that were strikes (First Strike %)
+- n: Total pitches (Total Pitches)
+- n_fastball_formatted: Percent of pitches that were fastballs (Fastball %) 
+- fastball_avg_speed: Average fastball MPH (Fastball Avg MPH)
+- fastball_avg_spin: Average spin on the fastball (Fastball Avg Spin) (measured in revolutions per minute)
+- fastball_avg_break_x: Average horizontal break on the fastball (Fastball Avg H Break)
+- fastball_avg_break_z: Average vertical break on the fastball (Fastball Avg V Break)
+- fastball_avg_break: Average total break on the fastball (Fastball Avg Break)
+- fastball_range_speed: Range of fastball speed in MPH (Fastball Range MPH)
+- n_breaking_formatted: Percent of pitches that were breaking pitches (Breaking %) 
+- breaking_avg_speed: Average breaking pitch MPH (Breaking Avg MPH)
+- breaking_avg_spin: Average spin on the breaking pitches (Breaking Avg Spin) (measured in revolutions per minute)
+- breaking_avg_break_x: Average horizontal break on the breaking pitches (Breaking Avg H Break)
+- breaking_avg_break_z: Average vertical break on the breaking pitches (Breaking Avg V Break)
+- breaking_avg_break: Average total break on the breaking pitches (Breaking Avg Break)
+- breaking_range_speed: Range of breaking pitches speed in MPH (Breaking Range MPH)
+- n_offspeed_formatted: Percent of pitches that were offspeed pitches (Offspeed %) 
+- offspeed_avg_speed: Average offspeed pitches MPH (Offspeed Avg MPH)
+- offspeed_avg_spin: Average spin on the offspeed pitches (Offspeed Avg Spin) (measured in revolutions per minute)
+- offspeed_avg_break_x: Average horizontal break on the offspeed pitches (Offspeed Avg H Break)
+- offspeed_avg_break_z: Average vertical break on the offspeed pitches (Offspeed Avg V Break)
+- offspeed_avg_break: Average total break on the offspeed pitches (Offspeed Avg Break)
+- offspeed_range_speed: Range of offspeed pitches speed in MPH (Offspeed Range MPH)
+- p_formatted_ip: Number of innings pitched (IP)
+
