@@ -2,13 +2,13 @@ An Analysis of Two Major Advanced Baseball Statistics Websites:
 FanGraphs versus Baseball Savant
 ================
 Alex Rados
-4/30/2020
+5/8/2020
 
 # Abstract
 
 In this presentation, I will aim to answer the question of who’s
 advanced statistics are more reliable in predicting a players’ future
-performance, FanGraph’s or Baseball Savant’s. To measure an individual
+performance, FanGraphs’ or Baseball Savant’s. To measure an individual
 player’s performance, I will use the oft-criticized and misunderstood
 wins above replacement, or WAR, of the player in the following season.
 The process of such a challenge is pulling a variety of variables from
@@ -18,32 +18,33 @@ analysis (PCA) from the data at hand. I will then use these principal
 components in a random forest model and attempt to build the most
 accurate predictive model for future player performance using
 root-mean-square error (RMSE) as the measuring stick. After doing so, I
-found that FanGraph’s advanced statistics consistently predicted future
-player WAR for both hitters and pitchers each year, with Baseball Savant
-closely behind. However, neither was perfect and only addresses the idea
-that even with the influx of data, predicting future performance is
-still extremely difficult.
+found that FanGraphs’ advanced statistics consistently had a better
+prediction of future player WAR for both hitters and pitchers each year,
+with Baseball Savant closely behind. However, neither was perfect and
+only addresses the idea that even with the influx of data, predicting
+future performance is still extremely difficult.
 
 # Introduction
 
 The release of “Moneyball” in 2003 and the unexpected dominance of the
 Oakland Athletics, a cash-strapped team who exchanged World Series
-trophies for the bragging rights to being the best team with no budget,
+trophies for the bragging rights to being the best frugal organization,
 inspired what would become the analytics age in baseball. Over that
 time, organizations and fans alike have been collecting data and
-creating new statistics like theres no tomorrow. Any fan can find these
-statistics on the two leading public baseball statistics websites,
-FanGraphs and Baseball Savant. These range from reaction time on a fly
-ball to time taken in between pitches and include just about every
-letter in the alphabet as well as mathematical operations. Baseball has
-long been known for its statistics and box scores, but in today’s
-analytics age, there is data on everything and organization’s are behind
-if they aren’t making use of it.
+creating new statistics like there is no tomorrow. Any fan can find
+these statistics on the two leading public baseball statistics websites,
+[FanGraphs](https://www.fangraphs.com/) and [Baseball
+Savant](https://baseballsavant.mlb.com/). These range from reaction time
+on a fly ball to time taken in between pitches and include just about
+every letter in the alphabet as well as mathematical operations.
+Baseball has long been known for its statistics and box scores, but in
+todays analytics age, there is data on everything and organizations are
+behind if they aren’t making use of it.
 
 FanGraphs is the elder of the two databases, having tracked players
 peripherals and offering more accurate views into a players performance
 than basic statistics since 2009. It is the dream website of any human
-being that grew up eyes glazed on the back of a baseball card.
+being that grew up eyes glued to the back of a baseball card.
 
 Baseball Savant is a newer entrant into the world of advanced statistics
 and began to make waves in 2015 with its introduction of Statcast.
@@ -83,7 +84,7 @@ pitchers, seperately. I will be looking at each year from 2015 until
 2018, using player statistics from their respective years and trying to
 predict their performance in the following season (thus, the outfielder
 Mike Trout’s 2015 statistical season will be used to predict his WAR in
-2016). I only go back as far as 2015 as that is when the statcast data
+2016). I only go back as far as 2015 as that is when the Statcast data
 becomes available from Baseball Savant.
 
 For each website and year, I limit the player pool to those who have
@@ -126,7 +127,7 @@ With each unique data set, I run a principle component analysis on the
 variables provided by both FanGraphs and Baseball Savant. Considering
 the large amount of statistics available, along with some variables
 being used as inputs for other variables (strikeout rates having a
-massive impact on one’s fielding independent pitching, for example), PCA
+massive impact on one’s fielder independent pitching, for example), PCA
 would be a smart way to deciphering the most important aspects of each
 variable while also not having an issue with correlation throughout.
 
@@ -181,12 +182,12 @@ WAR, or “the busts”, and how they rated among the first two PCs.
 
 The players to the left of PC1 tended to be more adept pitchers, which
 is judged through various statistics. The highest weighted of those is
-opponents’ expected slugging percentage, expected weighted on-base
-average, and expected isolated power, among other things. Clearly, these
-are pitchers that limit players getting on base and limit extra base
-hits (doubles, triples, home runs).
+opponents’ expected slugging percentage (xSLG), expected weighted
+on-base average (xwOBA), and expected isolated power (xISO), among other
+things. Clearly, these are pitchers that limit players getting on base
+and limit extra base hits (doubles, triples, home runs).
 
-PC2 on the otherhand heavily weighs pitchers who throw a lot of innings
+PC2 on the other hand heavily weighs pitchers who throw a lot of innings
 (the better you perform, the more innings you’ll be asked to throw),
 give up minimal “barrels” (a hit whose comparable hit types have led to
 a minimum .500 batting average and 1.500 slugging percentage based on
@@ -500,3 +501,19 @@ season’s WAR. Thus, whether one is a general manager seeking to bid on
 a free agent or an aspiring graduate looking for a job in the field,
 those working in baseball analytics should start with the industry
 standard: FanGraphs.
+
+# Appendix
+
+There are many variables involved throughout this project. FanGraphs in
+total, between the pitchers and hitters sections, has 112 unique
+variables. Baseball Savant, on the other hand, has 85 unique variables
+throughout their pitchers and hitters data sets. The following links are
+to markdown files with the variables (those used and cut out from the
+analysis), brief descriptions of each, and the associated name on
+FanGraphs and Baseball Savants websites:
+
+[FanGraphs’ Variable Names and
+Definitions](https://github.com/Alexander-Rados/Final-Project/blob/master/FG-Variable-Names-and-Definitions.md)
+
+[Baseball Savant’s Variable Names and
+Definitions](https://github.com/Alexander-Rados/Final-Project/blob/master/BS-Variable-Names-and-Definitions.md)
